@@ -1,0 +1,126 @@
+import tensorflow as tf
+from tensorflow.keras.datasets import cifar10
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.metrics import confusion_matrix, classification_report
+import seaborn as sns
+
+# Load CIFAR-10 dataset
+(x_train, y_train), (x_test, y_test) = cifar10.load_data()
+
+# Normalize pixel values to be between 0 and 1 for CNN and ResNet
+x_train, x_test = x_train / 255.0, x_test / 255.0
+
+# Define class names
+class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+
+# Plot a few sample images
+plt.figure(figsize=(10, 10))
+for i in range(25):
+    plt.subplot(5, 5, i + 1)
+    plt.xticks([])
+    plt.yticks([])
+    plt.grid(False)
+    plt.imshow(x_train[i])
+    plt.xlabel(class_names[y_train[i][0]])
+plt.show()
+
+# CNN Model for CIFAR-10 Classification
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+
+# Build the CNN model
+cnn_model = Sequential([
+    Conv2D(32, (3, 3), activation='relu', input_shape=(32, 32, 3)),
+    MaxPooling2D((2, 2)),
+    Conv2D(64, (3, 3), activation='relu'),
+    MaxPooling2D((2, 2)),
+    Conv2D(64, (3, 3), activation='relu'),
+    Flatten(),
+    Dense(64, activation='relu'),
+    Dropout(0.5),
+    Dense(10, activation='softmax')
+])
+
+cnn_model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+cnn_model.summary()
+
+# Train the CNN model
+history_cnn = cnn_model.fit(x_train, y_train, epochs=20, validation_data=(x_test, y_test))
+
+# Evaluate the CNN model
+test_loss_cnn, test_acc_cnn = cnn_model.evaluate(x_test, y_test, verbose=2)
+print(f'\nCNN Test accuracy: {test_acc_cnn}')
+
+# Plot training & validation accuracy values for CNN
+plt.plot(history_cnn.history['accuracy'])
+plt.plot(history_cnn.history['val_accuracy'])
+plt.title('CNN Model accuracy')
+plt.ylabel('Accuracy')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Test'], loc='upper left')
+plt.show()
+
+# Confusion Matrix for CNN
+y_pred_cnn = np.argmax(cnn_model.predict(x_test), axis=1)
+conf_matrix_cnn = confusion_matrix(y_test, y_pred_cnn)
+plt.figure(figsize=(10, 8))
+sns.heatmap(conf_matrix_cnn, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
+plt.title('Confusion Matrix for CNN')
+plt.xlabel('Predicted')
+plt.ylabel('True')
+plt.show()
+
+# Classification Report for CNN
+print('Classification Report for CNN:')
+print(classification_report(y_test, y_pred_cnn, target_names=class_names))
+
+# ResNet Model for CIFAR-10 Classification
+from tensorflow.keras.applications import ResNet50
+from tensorflow.keras.layers import Input, GlobalAveragePooling2D
+
+# Load the ResNet50 model
+input_tensor = Input(shape=(32, 32, 3))
+base_model = ResNet50(include_top=False, weights=None, input_tensor=input_tensor)
+
+# Add custom layers on top
+x = GlobalAveragePooling2D()(base_model.output)
+x = Dense(512, activation='relu')(x)
+x = Dropout(0.5)(x)
+output_tensor = Dense(10, activation='softmax')(x)
+
+# Define the ResNet model
+resnet_model = tf.keras.models.Model(inputs=input_tensor, outputs=output_tensor)
+
+resnet_model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+resnet_model.summary()
+
+# Train the ResNet model
+history_resnet = resnet_model.fit(x_train, y_train, epochs=20, validation_data=(x_test, y_test))
+
+# Evaluate the ResNet model
+test_loss_resnet, test_acc_resnet = resnet_model.evaluate(x_test, y_test, verbose=2)
+print(f'\nResNet Test accuracy: {test_acc_resnet}')
+
+# Plot training & validation accuracy values for ResNet
+plt.plot(history_resnet.history['accuracy'])
+plt.plot(history_resnet.history['val_accuracy'])
+plt.title('ResNet Model accuracy')
+plt.ylabel('Accuracy')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Test'], loc='upper left')
+plt.show()
+
+# Confusion Matrix for ResNet
+y_pred_resnet = np.argmax(resnet_model.predict(x_test), axis=1)
+conf_matrix_resnet = confusion_matrix(y_test, y_pred_resnet)
+plt.figure(figsize=(10, 8))
+sns.heatmap(conf_matrix_resnet, annot=True, fmt='d', cmap='Blues', xticklabels=class_names, yticklabels=class_names)
+plt.title('Confusion Matrix for ResNet')
+plt.xlabel('Predicted')
+plt.ylabel('True')
+plt.show()
+
+# Classification Report for ResNet
+print('Classification Report for ResNet:')
+print(classification_report(y_test, y_pred_resnet, target_names=class_names))
